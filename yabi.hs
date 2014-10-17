@@ -69,7 +69,7 @@ main :: IO ()
 main = do
     args <- getArgs
     if length args /= 1 then do
-        putStrLn "Usage: brainfuck path"
+        putStrLn "Usage: yabi path"
         exitFailure
     else return ()
     rawProgram <- readFile $ head args

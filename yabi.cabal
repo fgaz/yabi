@@ -1,7 +1,7 @@
 name:                yabi
 version:             0.1.0.0
 synopsis:            Yet Another Brainfuck Interpreter
--- description:         
+description:         Yet Another Brainfuck Interpreter. Usage: yabi path
 homepage:            https://github.com/fgaz/yabi
 license:             MIT
 license-file:        LICENSE
