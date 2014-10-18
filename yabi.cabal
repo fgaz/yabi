@@ -1,5 +1,5 @@
 name:                yabi
-version:             0.1.0.0
+version:             0.1.1.0
 synopsis:            Yet Another Brainfuck Interpreter
 description:         Yet Another Brainfuck Interpreter. Usage: yabi path
 homepage:            https://github.com/fgaz/yabi

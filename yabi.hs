@@ -4,16 +4,19 @@ import System.Environment (getArgs)
 import System.IO (readFile, putChar, getChar, stdout, stdin, hSetBuffering, BufferMode (NoBuffering))
 import System.Exit (exitFailure)
 
---the memory & program zippers
-type Memory = ([Word8],[Word8]) -- the memory zipper: (left, pointer:right)
-type Program = ([Char],[Char]) -- the instructions zipper: (todo,done)
+--represents a bf instruction or a loop
+data Instruction = Plus | Minus | Next | Prev | Input | Output | Loop [Instruction] | MDump | PDump deriving (Show, Eq)
+type Program = [Instruction]
+
+--the memory zipper: (left, pointer:right)
+type Memory = ([Word8],[Word8])
 
 --the default memory, an infinite zipper filled with zeros
-defaultMemory :: ([Word8],[Word8])
+defaultMemory :: Memory
 defaultMemory = ((repeat 0),(repeat 0))
 
 --breaks a string when the brackets are balanced
--- an open bracket adds 1 to the balance, a closed one subtracts 1
+--an open bracket adds 1 to the balance, a closed one subtracts 1
 breakWhenBalanced :: Int -> String -> (String, String)
 breakWhenBalanced 0 str = ("",str)
 breakWhenBalanced balance (s:str) | s == '[' = let (first, second) = breakWhenBalanced (balance+1) str in (s:first, second)
@@ -21,49 +24,69 @@ breakWhenBalanced balance (s:str) | s == '[' = let (first, second) = breakWhenBa
                                   | otherwise = let (first, second) = breakWhenBalanced balance str in (s:first, second)
 breakWhenBalanced balance [] = error $ "malformed code, brackets balance off by " ++ (show balance)
 
+
+--parse a string to a Program
+bfParse :: String -> Program -> Program
+bfParse "" prog = prog --edge condition
+--adds a Loop containing the code inside the brackets
+bfParse ('[':str) prog = bfParse str' $ prog ++ [Loop loop]
+    where loop = bfParse (init loopStr) []
+          (loopStr, str') = breakWhenBalanced 1 str
+--all other instructions
+bfParse (char:str) prog = bfParse str $ prog ++ instruction
+    where instruction = case char2instruction char of Just a -> [a]
+                                                      Nothing -> [] --comments
+
+char2instruction :: Char -> Maybe Instruction
+char2instruction '>' = Just Next
+char2instruction '<' = Just Prev
+char2instruction '+' = Just Plus
+char2instruction '-' = Just Minus
+char2instruction '.' = Just Output
+char2instruction ',' = Just Input
+char2instruction '#' = Just MDump
+char2instruction '§' = Just PDump --i picked a random not-widely-used character for this
+char2instruction _ = Nothing --comments
+
 --the actual interpreter
-bf :: Program -> Memory -> IO ()
-bf ([], _) _ = return () --end of program
+bf :: Program -> Memory -> IO Memory
+bf [] memory = return memory --end of (sub)program
 --move the pointer
-bf ('>':commands, done) (ml, m:mr) = bf (commands, '>':done) (m:ml, mr)
-bf ('<':commands, done) (m:ml, mr) = bf (commands, '<':done) (ml, m:mr)
+bf (Next:commands) (ml, m:mr) = bf commands (m:ml, mr)
+bf (Prev:commands) (m:ml, mr) = bf commands (ml, m:mr)
 --change the pointed byte
-bf ('+':commands, done) (ml, m:mr) = bf (commands, '+':done) (ml, (m+1):mr)
-bf ('-':commands, done) (ml, m:mr) = bf (commands, '-':done) (ml, (m-1):mr)
+bf (Plus:commands) (ml, m:mr) = bf commands (ml, (m+1):mr)
+bf (Minus:commands) (ml, m:mr) = bf commands (ml, (m-1):mr)
 --output of pointed byte
-bf ('.':commands, done) (ml, m:mr) = do
-                                       putChar $ chr $ fromIntegral m
-                                       bf (commands, '.':done) (ml, m:mr)
+bf (Output:commands) (ml, m:mr) = do
+                                    putChar $ chr $ fromIntegral m
+                                    bf commands (ml, m:mr)
 --input to pointed byte
-bf (',':commands, done) (ml, _:mr) = do
-                                       char <- getChar
-                                       let m = fromIntegral $ ord char
-                                       bf (commands, ',':done) (ml, m:mr)
---if pointed byte == 0 then jump forward to the corresponding ]
-bf ('[':commands, done) (ml, m:mr) | m == 0 = bf (commands', done') (ml, m:mr)
-                                   | otherwise = bf (commands, '[':done) (ml, m:mr)
-    where (token, commands') = breakWhenBalanced 1 commands
-          done' = (reverse token) ++ '[':done
---if pointed byte /= 0 then jump back to the corresponding [
-bf (']':commands, done) (ml, m:mr) | m /= 0 = bf (commands', done') (ml, m:mr)
-                                   | otherwise = bf (commands, ']':done) (ml, m:mr) --the interpreter works even without this line and "| m /= 0" on the line above, but this way is faster
-    where (token, done') = breakWhenBalanced (-1) done
-          commands' = (reverse token) ++ ']':commands
+bf (Input:commands) (ml, _:mr) = do
+                                   char <- getChar
+                                   let m = fromIntegral $ ord char
+                                   bf commands (ml, m:mr)
+--loop (brackets)
+bf ((Loop loop):commands) (ml, m:mr) | m == 0 = bf commands (ml, m:mr) --skip the loop
+                                     | otherwise = do
+                                                     memory' <- bf loop (ml, m:mr) --execute the loop one time
+                                                     bf ((Loop loop):commands) memory' --recurse
 
 --debug
 --memory dump ('#', according to Urban Müller's original interpreter)
-bf ('#':commands, done) (ml,m:mr) = do
-                                   putStrLn "Memory dump:"
-                                   putStrLn $ "  " ++ (show $ takeWhile (/=0) ml) ++ " >" ++ (show m) ++ "< " ++ (show $ takeWhile (/=0) mr)
-                                   bf (commands, '#':done) (ml,m:mr)
---program dump (i picked a random not-widely-used character for this)
-bf ('§':commands, done) (ml,mr) = do
-                                   putStrLn "Program dump:"
-                                   putStrLn $ "  " ++ (reverse done) ++ "|" ++ commands
-                                   putStrLn $ (replicate (length done + 2) ' ') ++ "^"
-                                   bf (commands, '§':done) (ml,mr)
+bf (MDump:commands) (ml,m:mr) = do
+                                  putStrLn "Memory dump:"
+                                  putStrLn $ "  " ++ (show $ takeWhile (/=0) ml) ++ " >" ++ (show m) ++ "< " ++ (show $ takeWhile (/=0) mr)
+                                  bf commands (ml,m:mr)
+--program dump
+bf (PDump:commands) memory = do
+                               putStrLn "Program dump:"
+                               putStrLn $ "  " ++ (show commands)
+                               bf commands memory
 --catch-all pattern. I have yet to discover a way to fall down there
-bf _ _ = error "malformed code"
+--whitout the infinite zipper it would be out of memory
+bf _ _ = error "wtf error."
+
 
 main :: IO ()
 main = do
@@ -73,9 +96,13 @@ main = do
         exitFailure
     else return ()
     rawProgram <- readFile $ head args
-    let program = (filter (`elem` "><+-.,[]#§") rawProgram, [])
+    putStrLn "[yabi] Parsing..."
+    --parse the program string
+    let program = bfParse rawProgram []
+    putStrLn "[yabi] Parsed. Executing..."
     --disable buffering
     hSetBuffering stdout NoBuffering
     hSetBuffering stdin NoBuffering
     --start the interpreter
     bf program defaultMemory
+    return ()
