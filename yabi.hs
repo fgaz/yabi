@@ -116,5 +116,7 @@ main = do
     hSetBuffering stdout NoBuffering
     hSetBuffering stdin NoBuffering
     --start the interpreter
-    bf program defaultMemory
+    --we need the side effects, not the final memory, hence `_ <-`
+    _ <- bf program defaultMemory
     return ()
+
