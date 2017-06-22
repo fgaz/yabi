@@ -87,13 +87,13 @@ bf ((Loop loop):commands) (ml, m:mr) | m == 0 = bf commands (ml, m:mr) --skip th
 --debug
 --memory dump ('#', according to Urban Müller's original interpreter)
 bf (MDump:commands) (ml,m:mr) = do
-                                  putStrLn "Memory dump:"
-                                  putStrLn $ "  " ++ show (takeWhile (/=0) ml) ++ " >" ++ show m ++ "< " ++ show (takeWhile (/=0) mr)
+                                  hPutStrLn stderr "Memory dump:"
+                                  hPutStrLn stderr $ "  " ++ show (takeWhile (/=0) ml) ++ " >" ++ show m ++ "< " ++ show (takeWhile (/=0) mr)
                                   bf commands (ml,m:mr)
 --program dump
 bf (PDump:commands) memory = do
-                               putStrLn "Program dump:"
-                               putStrLn $ "  " ++ show commands
+                               hPutStrLn stderr "Program dump:"
+                               hPutStrLn stderr $ "  " ++ show commands
                                bf commands memory
 --catch-all pattern. I have yet to discover a way to fall down there
 --whitout the infinite zipper it would be out of memory
