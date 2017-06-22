@@ -107,10 +107,10 @@ main = do
         putStrLn "Usage: yabi path"
         exitFailure
     rawProgram <- readFile $ head args
-    putStrLn "[yabi] Parsing..."
+    hPutStrLn stderr "[yabi] Parsing..."
     --parse the program string
     let program = bfParse rawProgram []
-    putStrLn "[yabi] Parsed. Executing..."
+    hPutStrLn stderr "[yabi] Parsed. Executing..."
     --disable buffering
     hSetBuffering stdout NoBuffering
     hSetBuffering stdin NoBuffering
