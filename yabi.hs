@@ -1,8 +1,9 @@
 import Data.Word8 (Word8)
 import Data.Char (ord, chr)
 import System.Environment (getArgs)
+import Control.Monad (when)
 import System.IO
-  ( readFile, putChar, getChar,
+  ( readFile, putChar, getChar, hPutStrLn,
     stdout, stdin, stderr,
     hSetBuffering, BufferMode (NoBuffering) )
 import System.Exit (exitFailure)
@@ -103,7 +104,7 @@ bf _ _ = error "wtf error."
 main :: IO ()
 main = do
     args <- getArgs
-    when length args /= 1 $ do
+    when (length args /= 1) $ do
         putStrLn "Usage: yabi path"
         exitFailure
     rawProgram <- readFile $ head args
