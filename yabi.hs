@@ -1,19 +1,31 @@
 import Data.Word8 (Word8)
 import Data.Char (ord, chr)
 import System.Environment (getArgs)
-import System.IO (readFile, putChar, getChar, stdout, stdin, hSetBuffering, BufferMode (NoBuffering))
+import System.IO
+  ( readFile, putChar, getChar,
+    stdout, stdin, stderr,
+    hSetBuffering, BufferMode (NoBuffering) )
 import System.Exit (exitFailure)
 
 --represents a bf instruction or a loop
-data Instruction = Plus | Minus | Next | Prev | Input | Output | Loop [Instruction] | MDump | PDump deriving (Show, Eq)
+data Instruction = Plus
+                 | Minus
+                 | Next
+                 | Prev
+                 | Input
+                 | Output
+                 | Loop [Instruction]
+                 | MDump
+                 | PDump
+                 deriving (Show, Eq)
 type Program = [Instruction]
 
 --the memory zipper: (left, pointer:right)
-type Memory = ([Word8],[Word8])
+type Memory = ([Word8], [Word8])
 
 --the default memory, an infinite zipper filled with zeros
 defaultMemory :: Memory
-defaultMemory = ((repeat 0),(repeat 0))
+defaultMemory = (repeat 0, repeat 0)
 
 --breaks a string when the brackets are balanced
 --an open bracket adds 1 to the balance, a closed one subtracts 1
@@ -22,7 +34,7 @@ breakWhenBalanced 0 str = ("",str)
 breakWhenBalanced balance (s:str) | s == '[' = let (first, second) = breakWhenBalanced (balance+1) str in (s:first, second)
                                   | s == ']' = let (first, second) = breakWhenBalanced (balance-1) str in (s:first, second)
                                   | otherwise = let (first, second) = breakWhenBalanced balance str in (s:first, second)
-breakWhenBalanced balance [] = error $ "malformed code, brackets balance off by " ++ (show balance)
+breakWhenBalanced balance [] = error $ "malformed code, brackets balance off by " ++ show balance
 
 
 --parse a string to a Program
@@ -46,7 +58,7 @@ char2instruction '.' = Just Output
 char2instruction ',' = Just Input
 char2instruction '#' = Just MDump
 char2instruction '§' = Just PDump --i picked a random not-widely-used character for this
-char2instruction _ = Nothing --comments
+char2instruction  _  = Nothing --comments
 
 --the actual interpreter
 bf :: Program -> Memory -> IO Memory
@@ -76,12 +88,12 @@ bf ((Loop loop):commands) (ml, m:mr) | m == 0 = bf commands (ml, m:mr) --skip th
 --memory dump ('#', according to Urban Müller's original interpreter)
 bf (MDump:commands) (ml,m:mr) = do
                                   putStrLn "Memory dump:"
-                                  putStrLn $ "  " ++ (show $ takeWhile (/=0) ml) ++ " >" ++ (show m) ++ "< " ++ (show $ takeWhile (/=0) mr)
+                                  putStrLn $ "  " ++ show (takeWhile (/=0) ml) ++ " >" ++ show m ++ "< " ++ show (takeWhile (/=0) mr)
                                   bf commands (ml,m:mr)
 --program dump
 bf (PDump:commands) memory = do
                                putStrLn "Program dump:"
-                               putStrLn $ "  " ++ (show commands)
+                               putStrLn $ "  " ++ show commands
                                bf commands memory
 --catch-all pattern. I have yet to discover a way to fall down there
 --whitout the infinite zipper it would be out of memory
@@ -91,10 +103,9 @@ bf _ _ = error "wtf error."
 main :: IO ()
 main = do
     args <- getArgs
-    if length args /= 1 then do
+    when length args /= 1 $ do
         putStrLn "Usage: yabi path"
         exitFailure
-    else return ()
     rawProgram <- readFile $ head args
     putStrLn "[yabi] Parsing..."
     --parse the program string
