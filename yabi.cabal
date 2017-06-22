@@ -13,6 +13,10 @@ build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.10
 
+source-repository head
+  type:     git
+  location: git://github.com/fgaz/yabi.git
+
 executable yabi
   main-is:             yabi.hs
   -- other-modules:       
