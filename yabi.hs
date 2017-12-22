@@ -91,6 +91,11 @@ bf ((Loop loop):commands) (ml, m:mr)
   | otherwise = do
     memory' <- bf loop (ml, m:mr) --execute the loop one time
     bf ((Loop loop):commands) memory' --recurse
+    -- The aboe code isn't tail recursive, but it's actually faster than the
+    -- following:
+    -- > bf (loop ++ (Loop loop):commands) (ml, m:mr)
+    -- This is probably because doing it like this ↑
+    -- we traverse the list multiple times per loop.
 
 --debug
 --memory dump ('#', according to Urban Müller's original interpreter)
