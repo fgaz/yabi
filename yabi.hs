@@ -116,7 +116,7 @@ bf (PDump:commands) memory = do
   hPutStrLn stderr $ "  " ++ show commands
   bf commands memory
 --catch-all pattern. I have yet to discover a way to fall down there
---whitout the infinite zipper it would be out of memory
+--without the infinite zipper, it would be out of memory
 bf _ _ = error "Impossible error. Please report a bug if this gets printed."
 
 
